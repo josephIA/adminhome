@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin - Generate Package Code</title>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    select{ padding: 20px 20px;
+       width: 40%; 
+       border-radius: 5px;
+       }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      text-align: center;
+      color: white;
+    }
+    .box {
+      background-image: url(logo1.png);
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 85%;
+      height: auto;
+      margin: auto;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    input {
+      margin-top: 20px;
+      padding: 10px;
+    }
+    button{
+      color: #fffefe;
+      background-color: orange;
+      font-weight: bold;
+      padding: 20px 20px;
+      border: none;
+      border-radius: 5px;
+    }
+    input {
+      width: 40%;
+      padding: 20px 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: white;
+    }
+    #address {
+      width: 38%;
+      padding: 10px 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: white;
+    }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2>Admin: Tracking Code Generator</h2>
+  <form id="adminForm">
+    <input type="text" id="name" placeholder="Recipient Name" required>
+    <textarea id="address" placeholder="Address" required></textarea>
+    <input type="text" id="phone" placeholder="Phone Number" required>
+    <select id="status">
+      <option value="hold">On Hold at Customs</option>
+      <option value="shipping">Shipping in Progress</option>
+    </select><br><br>
+
+    <!-- ✅ Added Admin Key input -->
+    <input type="password" id="adminKey" placeholder="Enter Admin Key" required><br><br>
+
+    <button type="submit">Generate</button>
+  </form>
+  <div id="result"></div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyA-rUIh4Uffmc6kjk8VFWRXISdkZQxxnPI",
+    authDomain: "package-tracker-cb9fd.firebaseapp.com",
+    projectId: "package-tracker-cb9fd",
+    storageBucket: "package-tracker-cb9fd.firebasestorage.app",
+    messagingSenderId: "160321800329",
+    appId: "1:160321800329:web:ae4bd3325474907d631e58"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  function generateCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 15; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+
+  document.getElementById('adminForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById("name").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const status = document.getElementById("status").value;
+    const adminKey = document.getElementById("adminKey").value.trim(); // ✅ read key
+    const code = generateCode();
+
+    if (adminKey !== "airmaxexpress1010") { // ✅ check key
+      alert("Invalid Admin Key! Access denied.");
+      return;
+    }
+
+    let trackingHistory = [];
+    let currentStatus = "";
+    const now = new Date();
+
+    if (status === "hold") {
+      trackingHistory = [];
+      currentStatus = "On Hold at Customs";
+    } else {
+      trackingHistory = [
+        { status: "Cleared", date: new Date(now.getTime() - 3 * 3600000).toUTCString() },
+        { status: "In Transit", date: new Date(now.getTime() - 2 * 3600000).toUTCString() }
+      ];
+      currentStatus = "In Transit";
+    }
+
+    await db.collection("packages").doc(code).set({
+      name,
+      address,
+      phone,
+      status,
+      currentStatus,
+      trackingHistory,
+      adminKey // 🔑 this will be validated by Firestore rules
+    });
+
+    const message = status === "hold"
+      ? "🛑 Package is currently <strong>on hold</strong> at customs."
+      : "🚚 Package is <strong>in transit</strong> and will be delivered soon.";
+
+    document.getElementById("result").innerHTML = `
+      ✅ Tracking Code: <strong>${code}</strong><br>
+      ${message}<br><br>
+      <em>Send this code to the user for tracking.</em>
+    `;
+
+    document.getElementById("adminForm").reset();
+  });
+</script>
+</body>
+</html>
